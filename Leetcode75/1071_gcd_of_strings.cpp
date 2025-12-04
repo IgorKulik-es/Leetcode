@@ -10,16 +10,17 @@ class Solution {
 		{
 			while (a != 0 && b != 0)
 			{
-				a = b % a;
-				b = a % b;
+				a %= b;
+				if (a != 0)
+					b %= a;
 			}
 			return a + b;
 		}
 		bool	CheckIsDivisible(std::string str, int quotient, char* divider, int lengthDiv)
 		{
-			char*	ptr = str.begin().base() + lengthDiv;
+			char*	ptr = str.begin().base();
 
-			for (int i = 1; i < quotient; i++)
+			for (int i = 0; i < quotient; i++)
 			{
 				if (strncmp(ptr, divider, lengthDiv) != 0)
 					return false;
@@ -35,7 +36,6 @@ class Solution {
 			int		lengthSubstr = gcd(length1, length2);
 			char	divider[std::max(length1, length2) + 1];
 
-			std::cout << lengthSubstr << " sizes " << length1 << " " << length2 <<  std::endl;
 			while (lengthSubstr > 0)
 			{
 				if (((length1 % lengthSubstr) == 0) && ((length2 % lengthSubstr) == 0))
@@ -60,8 +60,8 @@ int	main(int argc, char** argv)
 {
 	Solution	solve;
 
-	std::string	str1 = std::string("TAUXXTAUXXTAUXXTAUXXTAUXX");
-	std::string	str2 = std::string("TAUXXTAUXXTAUXXTAUXXTAUXXTAUXXTAUXXTAUXXTAUXX");
+	std::string	str1 = std::string("AB");
+	std::string	str2 = std::string("ABABAB");
 	std::cout << solve.gcdOfStrings(str1, str2) << std::endl;
 	return (0);
 }

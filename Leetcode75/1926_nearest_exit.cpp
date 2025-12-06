@@ -1,108 +1,98 @@
 #include <vector>
+#include <queue>
 #include <iostream>
-
 
 struct Coords
 {
 	int	x;
 	int	y;
 	Coords(int x, int y): x(x), y(y){};
+	Coords(): x(0), y(0){};
 };
+
+Coords operator+(const Coords& first, const Coords& other)
+{
+	return Coords(first.x + other.x, first.y + other.y);
+}
 
 class Solution {
 	private:
-		std::vector<std::vector<short>>	distances;
+		std::vector<std::vector<bool>>	visitedCells;
 		int		width;
 		int		height;
 		int		depth = 0;
-		int		bestResult = INT32_MAX;
 
-		int		SideStep(std::vector<std::vector<char>>& maze, int x, int y);
-		void	TryNeighbours(std::vector<std::vector<char>>& maze, int x, int y, int (&foundExit)[4]);
-		void	RiseUp(std::vector<std::vector<char>>& maze, int x, int y, int& bestRoute);
-		bool	IsExit(std::vector<std::vector<char>>& maze, int x, int y);
-		bool	IsPassable(std::vector<std::vector<char>>& maze, int x, int y);
-		void	ChooseBestRoute(int (&foundExit)[4], int& bestRoute);
+		int		FindExit(std::vector<std::vector<char>>& maze, Coords start);
+		void	EnqueueOneNeighbour(std::vector<std::vector<char>>& maze, std::queue<Coords>& queue, Coords cell);
+		void	EnqueueAllNeighbours(std::vector<std::vector<char>>& maze, std::queue<Coords>& queue, Coords cell);
+		bool	IsExit(std::vector<std::vector<char>>& maze,  Coords cell);
+		bool	IsPassable(std::vector<std::vector<char>>& maze,  Coords cell);
 	public:
 		int nearestExit(std::vector<std::vector<char>>& maze, std::vector<int>& entrance)
 		{
 			width = maze[0].size();
 			height = maze.size();
-			distances = std::vector<std::vector<short>>(height, std::vector<short>(width, 0));
+			visitedCells = std::vector<std::vector<bool>>(height, std::vector<bool>(width, false));
 			maze[entrance[0]][entrance[1]] = '+';
-			return SideStep(maze, entrance[1], entrance[0]);
+			return FindExit(maze, Coords(entrance[1], entrance[0]));
 		}
 };
 
-int	Solution::SideStep(std::vector<std::vector<char>>& maze, int x, int y)
+int		Solution::FindExit(std::vector<std::vector<char>>& maze, Coords start)
 {
-	int	foundExit[4] = {-1, -1, -1, -1};
-	int	bestRoute;
+	std::queue<Coords>	expansionOrder[2];
+	bool				isCicleEven = true;
+	Coords				currentCell = start;
 
-	depth++;
-	if (distances[y][x] == 0)
-		distances[y][x] = depth;
-	if (depth > bestResult)
+	expansionOrder[isCicleEven].push(start);
+	visitedCells[start.y][start.x] = true;
+	while (expansionOrder[0].empty() == false || expansionOrder[1].empty() == false)
 	{
-		RiseUp(maze, x, y, bestRoute);
-		return -1;
+		while (expansionOrder[isCicleEven].empty() == false)
+		{
+			currentCell = expansionOrder[isCicleEven].front();
+			if (IsExit(maze, currentCell))
+				return depth;
+			EnqueueAllNeighbours(maze, expansionOrder[!isCicleEven], currentCell);
+			expansionOrder[isCicleEven].pop();
+		}
+		depth++;
+		isCicleEven ^= true;
 	}
-	if (IsExit(maze, x, y))
+	return -1;
+}
+
+void	Solution::EnqueueAllNeighbours(std::vector<std::vector<char>>& maze, std::queue<Coords>& queue, Coords cell)
+{
+	EnqueueOneNeighbour(maze, queue, cell + Coords(-1, 0));
+	EnqueueOneNeighbour(maze, queue, cell + Coords(1, 0));
+	EnqueueOneNeighbour(maze, queue, cell + Coords(0, -1));
+	EnqueueOneNeighbour(maze, queue, cell + Coords(0, 1));
+}
+
+
+void	Solution::EnqueueOneNeighbour(std::vector<std::vector<char>>& maze, std::queue<Coords>& queue, Coords cell)
+{
+	if (IsPassable(maze, cell) && visitedCells[cell.y][cell.x] == false)
 	{
-		RiseUp(maze, x, y, bestRoute);
-		return (depth);
-	}
-	maze[y][x] = '+';
-	TryNeighbours(maze, x, y, foundExit);
-	ChooseBestRoute(foundExit, bestRoute);
-	RiseUp(maze, x, y, bestRoute);
-	return bestRoute;
-}
-
-
-void	Solution::RiseUp(std::vector<std::vector<char>>& maze, int x, int y, int& bestRoute)
-{
-	maze[y][x] = '.';
-	depth--;
-	if (bestRoute > 0 && bestRoute < bestResult)
-		bestResult = bestRoute;
-}
-
-void	Solution::TryNeighbours(std::vector<std::vector<char>>& maze, int x, int y, int (&foundExit)[4])
-{
-	if (IsPassable(maze, x - 1, y))
-		foundExit[0] = SideStep(maze, x - 1, y);
-	if (IsPassable(maze, x, y - 1))
-		foundExit[1] = SideStep(maze, x, y - 1);
-	if (IsPassable(maze, x + 1, y))
-		foundExit[2] = SideStep(maze, x + 1, y);
-	if (IsPassable(maze, x, y + 1))
-		foundExit[3] = SideStep(maze, x, y + 1);
-}
-
-void	Solution::ChooseBestRoute(int (&foundExit)[4], int& bestRoute)
-{
-	bestRoute = foundExit[0];
-	for (int i = 1; i < 4; i++)
-	{
-		if (foundExit[i] > 0 && ((foundExit[i] < bestRoute) || bestRoute == -1))
-			bestRoute = foundExit[i];
+		queue.push(cell);
+		visitedCells[cell.y][cell.x] = true;
 	}
 }
 
-bool Solution::IsExit(std::vector<std::vector<char>>& maze, int x, int y)
+bool Solution::IsExit(std::vector<std::vector<char>>& maze, Coords cell)
 {
-	if ((x == 0 || x == width - 1 || y == 0 || y == height - 1)
-		&& maze[y][x] != '+')
+	if ((cell.x == 0 || cell.x == width - 1 || cell.y == 0 || cell.y == height - 1)
+		&& maze[cell.y][cell.x] != '+')
 		return true;
 	return false;
 }
 
-bool Solution::IsPassable(std::vector<std::vector<char>>& maze, int x, int y)
+bool Solution::IsPassable(std::vector<std::vector<char>>& maze, Coords cell)
 {
-	if ((x < 0) || (x > width - 1) || (y < 0) || (y > height - 1))
+	if ((cell.x < 0) || (cell.x > width - 1) || (cell.y < 0) || (cell.y > height - 1))
 		return false;
-	if (maze[y][x] == '.')
+	if (maze[cell.y][cell.x] == '.')
 		return true;
 	return false;
 }
@@ -122,12 +112,19 @@ int	main()
 										{'+','.','+','.','+','.','+'},
 										{'+','.','.','.','.','.','+'},
 										{'+','+','+','+','.','+','.'}};
-	std::vector<int>	entrance3 = {0, 1};
+	std::vector<int>	entrance3 = {1, 0};
+	std::vector<std::vector<char>> map4{{'+','.','+','+','+','+','+'},
+										{'+','.','+','.','.','.','+'},
+										{'+','.','+','.','+','.','+'},
+										{'+','.','.','.','+','.','+'},
+										{'+','+','+','+','+','+','.'}};
+	std::vector<int>	entrance4 = {0, 1};
 
 	// std::cout << solve.nearestExit(map1, entrance1) << std::endl;
-	std::cout << solve.nearestExit(map2, entrance2) << std::endl;
+	// std::cout << solve.nearestExit(map2, entrance2) << std::endl;
 	// std::cout << solve.nearestExit(map3, entrance3) << std::endl;
+	std::cout << solve.nearestExit(map4, entrance4) << std::endl;
 	return (0);
 }
 
-ТАБАЧНЫЕ КОРПОРАЦИИ ХОТЯТ ЗАВЛАДЕТЬ ТВОЕЙ ДУШОЙ!
+// ТАБАЧНЫЕ КОРПОРАЦИИ ХОТЯТ ВЛАДЕТЬ ТВОЕЙ ДУШОЙ!
